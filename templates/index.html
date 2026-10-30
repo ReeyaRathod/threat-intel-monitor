@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Threat Intelligence Visualizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background-color: #080a0f; color: #c9d1d9; font-family: 'Segoe UI', monospace; overflow: hidden; }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        .overlay { position: absolute; top: 20px; left: 20px; z-index: 10; background: rgba(13, 17, 23, 0.85); padding: 20px; border-radius: 8px; border: 1px solid #30363d; max-width: 400px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7); }
+        h1 { font-size: 18px; color: #58a6ff; margin-top: 0; border-bottom: 1px solid #30363d; padding-bottom: 8px; }
+        .alert-card { background: rgba(33, 38, 45, 0.9); border-left: 4px solid #f85149; padding: 8px 12px; margin-bottom: 10px; border-radius: 4px; font-size: 12px; }
+        .badge-warning { color: #d29922; font-weight: bold; }
+        .logout-btn { display: inline-block; margin-top: 10px; color: #8b949e; text-decoration: none; font-size: 11px; }
+        .logout-btn:hover { color: #f85149; }
+    </style>
+</head>
+<body>
+
+    <div class="overlay">
+        <h1>🌐 PLANETARY THREAT GLOBE</h1>
+        <p style="font-size: 11px; color: #8b949e;">GLOBAL ATTACK ORIGIN MAPPING</p>
+        <div id="alerts-list">
+            {% for alert in alerts %}
+            <div class="alert-card">
+                <span class="badge-warning">[{{ alert.type | upper }} ALERT]</span><br>
+                <strong>Target/URL:</strong> {{ alert.value }}<br>
+                <span style="color: #8b949e;">Source: {{ alert.source }}</span><br>
+                <span style="color: #58a6ff; font-size: 10px;">Geo: Lat {{ "%.2f"|format(alert.lat) }}, Lng {{ "%.2f"|format(alert.lng) }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        <a href="/logout" class="logout-btn">🔒 Logout SOC Session</a>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script>
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+        scene.add(ambientLight);
+
+        // 1. Earth Textured Sphere
+        const textureLoader = new THREE.TextureLoader();
+        const geometry = new THREE.SphereGeometry(3, 32, 32);
+        const earthTexture = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
+        
+        const material = new THREE.MeshBasicMaterial({
+            map: earthTexture,
+            transparent: true,
+            opacity: 0.95
+        });
+        const globe = new THREE.Mesh(geometry, material);
+        scene.add(globe);
+
+        // 2. Futuristic Cyber Wireframe Mesh Overlay
+        const wireframeGeometry = new THREE.SphereGeometry(3.02, 32, 32);
+        const wireframeMaterial = new THREE.MeshBasicMaterial({
+            color: 0x58a6ff,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.2
+        });
+        const wireframeGlobe = new THREE.Mesh(wireframeGeometry, wireframeMaterial);
+        globe.add(wireframeGlobe);
+
+        const threatData = [
+            {% for alert in alerts %}
+            { lat: {{ alert.lat }}, lng: {{ alert.lng }}, type: "{{ alert.type }}" },
+            {% endfor %}
+        ];
+
+        function latLngToVector3(lat, lng, radius, altitude = 0) {
+            const phi = (90 - lat) * (Math.PI / 180);
+            const theta = (lng + 180) * (Math.PI / 180);
+            const r = radius + altitude;
+            
+            return new THREE.Vector3(
+                -r * Math.sin(phi) * Math.cos(theta),
+                r * Math.cos(phi),
+                r * Math.sin(phi) * Math.sin(theta)
+            );
+        }
+
+        threatData.forEach(data => {
+            const pos = latLngToVector3(data.lat, data.lng, 3, 0.05);
+            const nodeGeo = new THREE.SphereGeometry(0.12, 16, 16);
+            const nodeMat = new THREE.MeshBasicMaterial({ color: 0xff3333 });
+            const node = new THREE.Mesh(nodeGeo, nodeMat);
+            
+            node.position.copy(pos);
+            globe.add(node);
+        });
+
+        camera.position.z = 7;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            globe.rotation.y += 0.0015;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
+

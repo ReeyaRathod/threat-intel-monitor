@@ -1,0 +1,17 @@
+{
+	"monitored_emails": [
+	"admin@target-enterprise.com",
+	"ceo@target-enterprise.com",
+	"security@target-enterprise.com"
+	],
+	"monitored_domains": [
+	"target-enterprise.com",
+	"target-enterprise-login.com"
+	],
+	"keywords": [
+	"password",
+	"api_key",
+	"database dump",
+	"internal credentials"
+	]
+}
